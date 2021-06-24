@@ -35,6 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	crv1alpha1 "sigs.k8s.io/controller-runtime/pkg/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -73,7 +74,7 @@ func TestReconcileAddonsConfiguration_AddAddonsProcess(t *testing.T) {
 				ts.brokerFacade, ts.docsProvider, ts.brokerSyncer, ts.templateService, tmpDir, time.Second, spy.NewLogDummy())
 
 			// THEN
-			result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}})
+			result, err := reconciler.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}})
 			assert.NoError(t, err)
 			assert.False(t, result.Requeue)
 
@@ -113,7 +114,7 @@ func TestReconcileAddonsConfiguration_AddAddonsProcess_ErrorIfBrokerExist(t *tes
 		ts.brokerFacade, ts.docsProvider, ts.brokerSyncer, ts.templateService, tmpDir, time.Second, spy.NewLogDummy())
 
 	// THEN
-	result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}})
+	result, err := reconciler.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}})
 	assert.Error(t, err)
 	assert.False(t, result.Requeue)
 
@@ -152,7 +153,7 @@ func TestReconcileAddonsConfiguration_UpdateAddonsProcess(t *testing.T) {
 		ts.brokerFacade, ts.docsProvider, ts.brokerSyncer, ts.templateService, tmpDir, time.Second, spy.NewLogDummy())
 
 	// THEN
-	result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}})
+	result, err := reconciler.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}})
 	assert.NoError(t, err)
 	assert.False(t, result.Requeue)
 }
@@ -184,7 +185,7 @@ func TestReconcileAddonsConfiguration_UpdateAddonsProcess_ConflictingAddons(t *t
 		ts.brokerFacade, ts.docsProvider, ts.brokerSyncer, ts.templateService, tmpDir, time.Second, spy.NewLogDummy())
 
 	// THEN
-	result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}})
+	result, err := reconciler.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}})
 	assert.NoError(t, err)
 	assert.False(t, result.Requeue)
 
@@ -208,14 +209,14 @@ func TestReconcileAddonsConfiguration_DeleteAddonsProcess(t *testing.T) {
 		ts.brokerFacade, ts.docsProvider, ts.brokerSyncer, ts.templateService, tmpDir, time.Second, spy.NewLogDummy())
 
 	// THEN
-	result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}})
+	result, err := reconciler.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}})
 	assert.NoError(t, err)
 	assert.False(t, result.Requeue)
 
 	res := v1alpha1.AddonsConfiguration{}
 	err = ts.mgr.GetClient().Get(context.Background(), types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}, &res)
-	assert.NoError(t, err)
-	assert.NotContains(t, res.Finalizers, v1alpha1.FinalizerAddonsConfiguration)
+	assert.Error(t, err)
+	assert.Equal(t, `addonsconfigurations.addons.kyma-project.io "deleted" not found`, err.Error())
 }
 
 func TestReconcileAddonsConfiguration_DeleteAddonsProcess_ReconcileOtherAddons(t *testing.T) {
@@ -232,7 +233,7 @@ func TestReconcileAddonsConfiguration_DeleteAddonsProcess_ReconcileOtherAddons(t
 		ts.brokerFacade, ts.docsProvider, ts.brokerSyncer, ts.templateService, tmpDir, time.Second, spy.NewLogDummy())
 
 	// THEN
-	result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}})
+	result, err := reconciler.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}})
 	assert.NoError(t, err)
 	assert.False(t, result.Requeue)
 
@@ -243,8 +244,8 @@ func TestReconcileAddonsConfiguration_DeleteAddonsProcess_ReconcileOtherAddons(t
 
 	res := v1alpha1.AddonsConfiguration{}
 	err = ts.mgr.GetClient().Get(context.Background(), types.NamespacedName{Namespace: fixAddonsCfg.Namespace, Name: fixAddonsCfg.Name}, &res)
-	assert.NoError(t, err)
-	assert.NotContains(t, res.Finalizers, v1alpha1.FinalizerAddonsConfiguration)
+	assert.Error(t, err)
+	assert.Equal(t, `addonsconfigurations.addons.kyma-project.io "deleted" not found`, err.Error())
 }
 
 func fixRepositories() []v1alpha1.StatusRepository {
@@ -443,7 +444,7 @@ func getTestSuite(t *testing.T, objects ...runtime.Object) *testSuite {
 	sFact, err := storage.NewFactory(storage.NewConfigListAllMemory())
 	require.NoError(t, err)
 
-	cli := fake.NewFakeClientWithScheme(sch, objects...)
+	cli := fake.NewClientBuilder().WithScheme(sch).WithRuntimeObjects(objects...).Build()
 	ts := &testSuite{
 		t:                  t,
 		mgr:                getFakeManager(t, cli, sch),
@@ -528,6 +529,10 @@ type fakeManager struct {
 	sch    *runtime.Scheme
 }
 
+func (f fakeManager) GetControllerOptions() crv1alpha1.ControllerConfigurationSpec {
+	panic("implement me")
+}
+
 func (f fakeManager) Elected() <-chan struct{} {
 	panic("implement me")
 }
@@ -564,7 +569,7 @@ func (fakeManager) SetFields(interface{}) error {
 	return nil
 }
 
-func (fakeManager) Start(<-chan struct{}) error {
+func (fakeManager) Start(ctx context.Context) error {
 	return nil
 }
 

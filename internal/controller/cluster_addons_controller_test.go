@@ -59,7 +59,7 @@ func TestReconcileClusterAddonsConfiguration_AddAddonsProcess(t *testing.T) {
 				ts.brokerFacade, ts.docsProvider, ts.brokerSyncer, ts.templateService, os.TempDir(), time.Second, spy.NewLogDummy())
 
 			// THEN
-			result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: fixAddonsCfg.Name}})
+			result, err := reconciler.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Name: fixAddonsCfg.Name}})
 			assert.NoError(t, err)
 			assert.False(t, result.Requeue)
 
@@ -100,7 +100,7 @@ func TestReconcileClusterAddonsConfiguration_AddAddonsProcess_Error(t *testing.T
 		ts.brokerFacade, ts.docsProvider, ts.brokerSyncer, ts.templateService, os.TempDir(), time.Second, spy.NewLogDummy())
 
 	// THEN
-	result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: fixAddonsCfg.Name}})
+	result, err := reconciler.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Name: fixAddonsCfg.Name}})
 	assert.Error(t, err)
 	assert.False(t, result.Requeue)
 
@@ -140,7 +140,7 @@ func TestReconcileClusterAddonsConfiguration_UpdateAddonsProcess(t *testing.T) {
 		ts.brokerFacade, ts.docsProvider, ts.brokerSyncer, ts.templateService, os.TempDir(), time.Second, spy.NewLogDummy())
 
 	// THEN
-	result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: fixAddonsCfg.Name}})
+	result, err := reconciler.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Name: fixAddonsCfg.Name}})
 	assert.False(t, result.Requeue)
 	assert.NoError(t, err)
 
@@ -175,7 +175,7 @@ func TestReconcileClusterAddonsConfiguration_UpdateAddonsProcess_ConflictingAddo
 		ts.addonStorage, ts.brokerFacade, ts.docsProvider, ts.brokerSyncer, ts.templateService, os.TempDir(), time.Second, spy.NewLogDummy())
 
 	// THEN
-	result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: fixAddonsCfg.Name}})
+	result, err := reconciler.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Name: fixAddonsCfg.Name}})
 	assert.NoError(t, err)
 	assert.False(t, result.Requeue)
 
@@ -196,14 +196,14 @@ func TestReconcileClusterAddonsConfiguration_DeleteAddonsProcess(t *testing.T) {
 		ts.brokerFacade, ts.docsProvider, ts.brokerSyncer, ts.templateService, os.TempDir(), time.Second, spy.NewLogDummy())
 
 	// THEN
-	result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: fixAddonsCfg.Name}})
+	result, err := reconciler.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Name: fixAddonsCfg.Name}})
 	assert.NoError(t, err)
 	assert.False(t, result.Requeue)
 
 	res := v1alpha1.ClusterAddonsConfiguration{}
 	err = ts.mgr.GetClient().Get(context.Background(), types.NamespacedName{Name: fixAddonsCfg.Name}, &res)
-	assert.NoError(t, err)
-	assert.NotContains(t, res.Finalizers, v1alpha1.FinalizerAddonsConfiguration)
+	assert.Error(t, err)
+	assert.Equal(t, `clusteraddonsconfigurations.addons.kyma-project.io "deleted" not found`, err.Error())
 }
 
 func TestReconcileClusterAddonsConfiguration_DeleteAddonsProcess_ReconcileOtherAddons(t *testing.T) {
@@ -217,7 +217,7 @@ func TestReconcileClusterAddonsConfiguration_DeleteAddonsProcess_ReconcileOtherA
 		ts.brokerFacade, ts.docsProvider, ts.brokerSyncer, ts.templateService, os.TempDir(), time.Second, spy.NewLogDummy())
 
 	// THEN
-	result, err := reconciler.Reconcile(reconcile.Request{NamespacedName: types.NamespacedName{Name: fixAddonsCfg.Name}})
+	result, err := reconciler.Reconcile(context.TODO(), reconcile.Request{NamespacedName: types.NamespacedName{Name: fixAddonsCfg.Name}})
 	assert.NoError(t, err)
 	assert.False(t, result.Requeue)
 
@@ -228,8 +228,8 @@ func TestReconcileClusterAddonsConfiguration_DeleteAddonsProcess_ReconcileOtherA
 
 	res := v1alpha1.ClusterAddonsConfiguration{}
 	err = ts.mgr.GetClient().Get(context.Background(), types.NamespacedName{Name: fixAddonsCfg.Name}, &res)
-	assert.NoError(t, err)
-	assert.NotContains(t, res.Finalizers, v1alpha1.FinalizerAddonsConfiguration)
+	assert.Error(t, err)
+	assert.Equal(t, `clusteraddonsconfigurations.addons.kyma-project.io "deleted" not found`, err.Error())
 }
 
 type clusterTestSuite struct {
@@ -255,7 +255,7 @@ func getClusterTestSuite(t *testing.T, objects ...runtime.Object) *clusterTestSu
 	sFact, err := storage.NewFactory(storage.NewConfigListAllMemory())
 	require.NoError(t, err)
 
-	cli := fake.NewFakeClientWithScheme(sch, objects...)
+	cli := fake.NewClientBuilder().WithScheme(sch).WithRuntimeObjects(objects...).Build()
 	return &clusterTestSuite{
 		t:                  t,
 		mgr:                getFakeManager(t, cli, sch),

@@ -32,12 +32,9 @@ var createDeletePredicate = predicate.Funcs{
 	UpdateFunc: func(_ event.UpdateEvent) bool { return false },
 }
 
-var eventHandler = &handler.EnqueueRequestsFromMapFunc{
-	ToRequests: handler.ToRequestsFunc(
-		func(mp handler.MapObject) []reconcile.Request {
-			return []reconcile.Request{{NamespacedName: types.NamespacedName{Namespace: mp.Meta.GetNamespace()}}}
-		},
-	)}
+var eventHandler = handler.EnqueueRequestsFromMapFunc(func(c client.Object) []reconcile.Request {
+	return []reconcile.Request{{NamespacedName: types.NamespacedName{Namespace: c.GetNamespace()}}}
+})
 
 // NewBrokerController creates BrokerController instance.
 func NewBrokerController(checker instanceChecker, cli client.Client, bFacade brokerFacade) *BrokerController {
@@ -68,8 +65,8 @@ func (sbc *BrokerController) Start(mgr manager.Manager) error {
 	}
 
 	err = c.Watch(&source.Kind{Type: &v1beta1.ServiceBroker{}}, eventHandler, predicate.Funcs{
-		CreateFunc: func(e event.CreateEvent) bool { return e.Meta.GetName() == broker.NamespacedBrokerName },
-		DeleteFunc: func(e event.DeleteEvent) bool { return e.Meta.GetName() == broker.NamespacedBrokerName },
+		CreateFunc: func(e event.CreateEvent) bool { return e.Object.GetName() == broker.NamespacedBrokerName },
+		DeleteFunc: func(e event.DeleteEvent) bool { return e.Object.GetName() == broker.NamespacedBrokerName },
 		UpdateFunc: func(_ event.UpdateEvent) bool { return false },
 	})
 	if err != nil {
@@ -80,7 +77,7 @@ func (sbc *BrokerController) Start(mgr manager.Manager) error {
 }
 
 // Reconcile checks if the (cluster) service broker must be removed
-func (sbc *BrokerController) Reconcile(request reconcile.Request) (reconcile.Result, error) {
+func (sbc *BrokerController) Reconcile(_ context.Context, request reconcile.Request) (reconcile.Result, error) {
 	currentNamespace := request.Namespace
 	sbc.namespacedBrokerFacade.SetNamespace(request.Namespace)
 
